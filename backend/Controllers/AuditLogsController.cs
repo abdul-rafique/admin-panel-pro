@@ -1,10 +1,12 @@
 using AdminPanel.Api.Data;
 using AdminPanel.Api.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AdminPanel.Api.Controllers
 {
+    [Authorize]
     [Route("api/audit-logs")]
     [ApiController]
     public class AuditLogsController(DataContext context) : ControllerBase
