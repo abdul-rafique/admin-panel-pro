@@ -1,10 +1,12 @@
 using AdminPanel.Api.Data;
 using AdminPanel.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AdminPanel.Api.Controllers
 {
+    [Authorize]
     [Route("api/users")]
     [ApiController]
     public class UsersController(DataContext context) : ControllerBase
