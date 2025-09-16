@@ -1,5 +1,8 @@
+using System.Text.Json;
 using AdminPanel.Api.Data;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +53,13 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<DataContext>(
+        name: "database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["db", "database"]
+    );
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -65,5 +75,28 @@ app.UseAuthentication();
 app.UseAuthentication();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            duration = report.TotalDuration.ToString(),
+            entries = report.Entries.Select(e => new
+            {
+                key = e.Key,
+                status = e.Value.Status.ToString(),
+                duration = e.Value.Duration.ToString(),
+                description = e.Value.Description,
+                tags = e.Value.Tags
+            })
+        });
+
+        await context.Response.WriteAsync(result);
+    }
+});
 
 app.Run();
