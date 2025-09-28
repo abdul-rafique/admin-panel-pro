@@ -9,20 +9,28 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.Services.AddAuthentication().AddJwtBearer(options =>
-{
-    options.Authority = builder.Configuration.GetValue<string>("[Auth0:Domain]");
-    options.Audience = builder.Configuration.GetValue<string>("[Auth0:Audience]");
-
-    options.TokenValidationParameters = new()
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        ValidateAudience = true,
-        ValidateIssuer = true,
-        ClockSkew = TimeSpan.Zero
-    };
-});
+        options.Authority = builder.Configuration.GetValue<string>("Auth0:Domain");
+        options.Audience = builder.Configuration.GetValue<string>("Auth0:Audience");
 
-builder.Services.AddAuthorization();
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidateIssuer = true,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5),
+
+            NameClaimType = ClaimTypes.NameIdentifier
+        };
+    });
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("ViewAuditLogs", policy =>
+    {
+        policy.RequireClaim("scope", "read:auditlogs");
+    });
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -72,7 +80,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
-app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
