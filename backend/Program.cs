@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AdminPanel.Api.Data;
+using AdminPanel.Api.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -81,6 +82,8 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseMiddleware<AuditLoggingMiddleware>();
 
 app.MapControllers();
 
