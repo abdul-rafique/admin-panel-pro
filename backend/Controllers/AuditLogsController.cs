@@ -1,3 +1,4 @@
+using System.Text;
 using AdminPanel.Api.Data;
 using AdminPanel.Api.DTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -82,6 +83,56 @@ namespace AdminPanel.Api.Controllers
             );
 
             return dto;
+        }
+
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportAuditLogs(
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] string? action = null
+        )
+        {
+            var query = context.AuditLogs
+                .Include(log => log.User)
+                .AsNoTracking()
+                .OrderByDescending(log => log.Timestamp)
+                .AsQueryable();
+
+            if (startDate.HasValue)
+                query = query.Where(log => log.Timestamp >= startDate.Value);
+
+            if (endDate.HasValue)
+                query = query.Where(log => log.Timestamp <= endDate.Value);
+
+            if (!string.IsNullOrEmpty(action))
+                query = query.Where(log => log.Action == action);
+
+            var logs = await query.ToListAsync();
+
+            var csvBuilder = new StringBuilder();
+            csvBuilder.AppendLine("ID,User Name,User Email,Action,Details,TimeStamp");
+
+            foreach (var log in logs)
+            {
+                var line = $"{log.Id}" +
+                            $"\"{log.User.Name}\"" +
+                            $"\"{log.User.Email}\"" +
+                            $"\"{log.Action}\"" +
+                            $"\"{SanitizeCsv(log.Details ?? "")}\"" +
+                            $"{log.Timestamp:O}";
+
+                csvBuilder.AppendLine(line);
+            }
+
+            var fileBytes = Encoding.UTF8.GetBytes(csvBuilder.ToString());
+            var filename = $"audit-logs-{DateTime.UtcNow:yyyy-MM-dd}.csv";
+
+            return File(fileBytes, "text/csv", filename);
+        }
+
+        private object SanitizeCsv(string input)
+        {
+            return input.Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", " ");
         }
     }
 }
